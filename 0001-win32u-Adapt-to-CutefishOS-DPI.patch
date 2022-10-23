@@ -1,0 +1,45 @@
+diff --git a/dlls/win32u/font.c b/dlls/win32u/font.c
+index f9a0359e92c..befdf5295ec 100644
+--- a/dlls/win32u/font.c
++++ b/dlls/win32u/font.c
+@@ -48,6 +48,7 @@
+ WINE_DEFAULT_DEBUG_CHANNEL(font);
+ 
+ static HKEY wine_fonts_key;
++static HKEY control_panel_desktop_key;
+ static HKEY wine_fonts_cache_key;
+ static HKEY hkcu_key;
+ 
+@@ -2751,6 +2752,9 @@ static void update_codepage( UINT screen_dpi )
+     if (size == sizeof(DWORD) && info->Type == REG_DWORD)
+         font_dpi = *(DWORD *)info->Data;
+ 
++    // For CutefishOS.
++    font_dpi = screen_dpi;
++
+     ansi_cp = get_acp();
+     oem_cp = get_oemcp();
+     sprintf( cpbuf, "%u,%u", ansi_cp, oem_cp );
+@@ -6355,9 +6359,23 @@ UINT font_init(void)
+         {'S','o','f','t','w','a','r','e','\\','W','i','n','e','\\','F','o','n','t','s'};
+     static const WCHAR cacheW[] = {'C','a','c','h','e'};
+ 
++    static const WCHAR desktop_keyW[] =
++        {'C','o','n','t','r','o','l',' ','P','a','n','e','l','\\',
++         'D','e','s','k','t','o','p'};
++
++    static const WCHAR log_pixelsW[] = {'L','o','g','P','i','x','e','l','s',0};
++
+     if (!(hkcu_key = open_hkcu())) return 0;
+     wine_fonts_key = reg_create_key( hkcu_key, wine_fonts_keyW, sizeof(wine_fonts_keyW), 0, NULL );
++    control_panel_desktop_key = reg_create_key(hkcu_key, desktop_keyW, sizeof(desktop_keyW), 0, NULL);
+     if (wine_fonts_key) dpi = init_font_options();
++
++    char *system_dpi = getenv("CUTEFISH_FONT_DPI");
++    if (system_dpi != NULL) {
++        dpi = atoi(system_dpi);
++        set_reg_value( control_panel_desktop_key, log_pixelsW, REG_DWORD, &dpi, sizeof(dpi) );
++    }
++
+     if (!dpi) return 96;
+     update_codepage( dpi );
